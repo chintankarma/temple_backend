@@ -1,17 +1,10 @@
 from app.infrastructure.repositories.temple_repo import TempleRepository
-from app.infrastructure.repositories.user_repo import UserRepository
 
 class TempleService:
 
     @staticmethod
-    def create_temple(db, data, current_user_email):
-        user = UserRepository.get_user_by_email(db, current_user_email)
-
-        if user.role != "temple":
-            return {"success": False, "message": "Only temple can add temple"}
-
-        temple = TempleRepository.create_temple(db, data, user.id)
-
+    def create_temple(db, data):
+        TempleRepository.create_temple(db, data, user_id=None)
         return {"success": True, "message": "Temple created"}
 
     @staticmethod
