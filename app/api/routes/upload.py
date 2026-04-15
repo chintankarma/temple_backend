@@ -14,6 +14,14 @@ def upload_profile_pic(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp", "image/avif", ]
+
+    if file.content_type not in ALLOWED_TYPES:
+        return {
+            "success": False,
+            "message": "Invalid file type. Only JPEG and PNG files are allowed."
+        }
+
     return {
         "success": True,
         "file_url": f"/uploads/{file.filename}"

@@ -4,6 +4,7 @@ import shutil
 
 from app.infrastructure.repositories.user_repo import UserRepository
 from app.core.security import verify_password, create_access_token
+from app.core.response import success_response, error_response
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -39,17 +40,17 @@ class UserService:
         profile_pic,
     ):
         if UserRepository.get_user_by_email(db, email):
-            return {"success": False, "message": "User already registered with this email"}
+            return error_response(message="User already registered with this email")
 
         if UserRepository.get_user_by_mobile(db, mobile_no):
-            return {"success": False, "message": "User already registered with this mobile number"}
+            return error_response(message="User already registered with this mobile number")
 
         if indian_citizen:
             if not state or not district:
-                return {"success": False, "message": "State and district are required for Indian citizens"}
+                return error_response(message="State and district are required for Indian citizens")
         else:
             if not country:
-                return {"success": False, "message": "Country is required for non-Indian citizens"}
+                return error_response(message="Country is required for non-Indian citizens")
 
         profile_pic_url = None
         if profile_pic:
@@ -81,10 +82,10 @@ class UserService:
     def login_user(db, data):
         user = UserRepository.get_user_by_email(db, data.email)
         if not user:
-            return {"success": False, "message": "User not found"}
+            return error_response(message="User not found")
 
         if not verify_password(data.password, user.password):
-            return {"success": False, "message": "Wrong password"}
+            return error_response(message="Wrong password")
 
         token = create_access_token({"sub": user.email})
         return {
@@ -98,34 +99,34 @@ class UserService:
     @staticmethod
     def get_all_users(db):
         users = UserRepository.get_all_users(db)
-        return {"success": True, "data": [_user_dict(u) for u in users]}
+        return success_response(data=[_user_dict(u) for u in users])
 
     @staticmethod
     def get_user(db, user_id: int):
         user = UserRepository.get_user_by_id(db, user_id)
         if not user:
-            return None
-        return {"success": True, "data": _user_dict(user)}
+            return error_response(message="User not found")
+        return success_response(data=_user_dict(user))
 
     @staticmethod
     def get_profile(db, email: str):
         user = UserRepository.get_user_by_email(db, email)
         if not user:
-            return None
-        return {"success": True, "data": _user_dict(user)}
+            return error_response(message="User not found")
+        return success_response(data=_user_dict(user))
 
     @staticmethod
     def update_profile(db, email: str, data):
         user = UserRepository.get_user_by_email(db, email)
         if not user:
-            return None
+            return error_response(message="User not found")
         updated = UserRepository.update_user(db, user, data)
-        return {"success": True, "message": "Profile updated", "data": _user_dict(updated)}
+        return success_response(message="Profile updated", data=_user_dict(updated))
 
     @staticmethod
     def delete_user(db, email: str):
         user = UserRepository.get_user_by_email(db, email)
         if not user:
-            return None
+            return error_response(message="User not found")
         UserRepository.delete_user(db, user)
-        return {"success": True, "message": "User deleted"}
+        return success_response(message="User deleted")

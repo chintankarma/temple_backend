@@ -1,11 +1,13 @@
 import uuid
 import os
 import shutil
+from app.core.response import success_response, error_response
 
 from app.infrastructure.repositories.user_repo import UserRepository
 from app.core.security import verify_password, create_access_token
 
 UPLOAD_DIR = "uploads"
+ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"]
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 class AuthService:
@@ -18,23 +20,23 @@ class AuthService:
         if email:
             user = UserRepository.get_user_by_email(db, email)
             if user:
-                return {"success": True, "exists": True, "message": "User exists with this email"}
-            return {"success": True, "exists": False, "message": "No user found with this email"}
+                return success_response(message="User exists with this email", data={"exists": True})
+            return success_response(message="No user found with this email", data={"exists": False})
 
         user = UserRepository.get_user_by_mobile(db, mobile_no)
         if user:
-            return {"success": True, "exists": True, "message": "User exists with this phone number"}
-        return {"success": True, "exists": False, "message": "No user found with this phone number"}
+            return success_response(message="User exists with this phone number", data={"exists": True})
+        return success_response(message="No user found with this phone number", data={"exists": False})
 
     @staticmethod
     def login_user(db, data):
         user = UserRepository.get_user_by_email(db, data.email)
 
         if not user:
-            return {"success": False, "message": "User not found"}
+            return error_response(message="User not found")
 
         if not verify_password(data.password, user.password):
-            return {"success": False, "message": "Wrong password"}
+            return error_response(message="Wrong password")
 
         token = create_access_token({"sub": user.email})
 
@@ -69,25 +71,30 @@ class AuthService:
         existing_user = UserRepository.get_user_by_email(db, email)
 
         if existing_user:
-            return {"success": False, "message": "User already exists"}
+            return success_response(message="User already exists with this email", data={"exists": True})
 
         existing_mobile = UserRepository.get_user_by_mobile(db, mobile_no)
 
         if existing_mobile:
-            return {"success": False, "message": "Mobile already registered"}
+            return error_response(message="Mobile already registered")
 
         if indian_citizen:
             if not state or not district:
-                return {"success": False, "message": "State and district are required for Indian citizens"}
+                return error_response(message="State and district are required for Indian citizens")
         else:
             if not country:
-                return {"success": False, "message": "Country is required for non-Indian citizens"}
+                return error_response(message="Country is required for non-Indian citizens")
 
         if profile_pic:
+            if profile_pic.content_type not in ALLOWED_TYPES:
+                return error_response(message="Invalid file type")
+
             filename = f"{uuid.uuid4()}_{profile_pic.filename}"
             file_path = os.path.join(UPLOAD_DIR, filename)
+
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(profile_pic.file, buffer)
+
             profile_pic_url = f"/uploads/{filename}"
         else:
             profile_pic_url = None
@@ -122,7 +129,7 @@ class AuthService:
         user = UserRepository.get_user_by_email(db, email)
 
         if not user:
-            return {"success": False, "message": "User not found"}
+            return success_response(message="User not found", data={"exists": False})
 
         return {
             "success": True,
@@ -146,21 +153,21 @@ class AuthService:
         user = UserRepository.get_user_by_email(db, email)
 
         if not user:
-            return {"success": False, "message": "User not found"}
+            return error_response(message="User not found")
 
         UserRepository.update_user(db, user, data)
 
-        return {"success": True, "message": "Profile updated"}
+        return success_response(message="Profile updated")
 
     @staticmethod
     def delete_user(db, user_id: int, current_email: str):
         user = UserRepository.get_user_by_id(db, user_id)
 
         if not user:
-            return {"success": False, "message": "User not found"}
+            return error_response(message="User not found")
 
         if user.email != current_email:
-            return {"success": False, "message": "Not authorized"}
+            return error_response(message="Not authorized")
 
         db.delete(user)
         try:
@@ -169,4 +176,4 @@ class AuthService:
             db.rollback()
             raise
 
-        return {"success": True, "message": "Profile deleted"}
+        return success_response(message="Profile deleted")

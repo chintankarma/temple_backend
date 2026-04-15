@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
+from pydantic import Field
 
 class LoginRequest(BaseModel):
     email: str
@@ -10,7 +11,7 @@ class SignupRequest(BaseModel):
     name: str
     mobile_no: str
     email: EmailStr
-    password: str
+    password: str = Field(min_length=6)
     indian_citizen: bool
     gender: str
     date_of_birth: str
