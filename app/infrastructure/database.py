@@ -7,7 +7,12 @@ DATABASE_URL = os.environ.get("SUPABASE_DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("SUPABASE_DATABASE_URL environment variable is not set")
 
-engine = create_engine(DATABASE_URL)
+# Force IPv4 and use connection args suitable for Supabase pooler
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"sslmode": "require"},
+    pool_pre_ping=True,
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
