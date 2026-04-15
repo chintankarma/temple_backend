@@ -31,6 +31,7 @@ class UserUpdateRequest(BaseModel):
 
 # ── Public ───────────────────────────────────────────────────────────────────
 
+
 @router.post("/register")
 def register_user(
     title: str = Form(...),
@@ -50,9 +51,18 @@ def register_user(
 ):
     return UserService.register_user(
         db,
-        title, name, mobile_no, email, password,
-        indian_citizen, gender, date_of_birth,
-        address, state, district, country,
+        title,
+        name,
+        mobile_no,
+        email,
+        password,
+        indian_citizen,
+        gender,
+        date_of_birth,
+        address,
+        state,
+        district,
+        country,
         profile_pic,
     )
 
@@ -69,7 +79,8 @@ def get_all_users(db: Session = Depends(get_db)):
 
 # ── Protected (user token required) — defined before /{user_id} ──────────────
 
-@router.get("/auth/me")
+
+@router.get("/me")
 def get_me(
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -80,7 +91,7 @@ def get_me(
     return result
 
 
-@router.put("/auth/update")
+@router.put("/update")
 def update_profile(
     data: UserUpdateRequest,
     current_user: str = Depends(get_current_user),
@@ -92,7 +103,7 @@ def update_profile(
     return result
 
 
-@router.delete("/auth/delete")
+@router.delete("/delete")
 def delete_user(
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -104,6 +115,7 @@ def delete_user(
 
 
 # ── Public — dynamic route last ───────────────────────────────────────────────
+
 
 @router.get("/{user_id}")
 def get_user(user_id: int, db: Session = Depends(get_db)):
