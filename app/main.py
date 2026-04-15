@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.infrastructure.database import engine, Base
+from app.infrastructure.database import Base, engine
 from app.api.routes import upload, otp, temple
 from app.api.routes.user import router as user_router
 from app.api.routes.forgot_password import router as forgot_password_router
