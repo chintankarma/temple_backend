@@ -24,6 +24,14 @@ class TempleRepository:
         return db.query(Temple).filter(Temple.id == temple_id).first()
 
     @staticmethod
+    def get_temple_by_email(db, email: str):
+        return db.query(Temple).filter(Temple.email == email).first()
+
+    @staticmethod
+    def get_temple_by_mobile(db, mobile_number: str):
+        return db.query(Temple).filter(Temple.mobile_number == mobile_number).first()
+
+    @staticmethod
     def get_all_temples(db):
         return db.query(Temple).all()
 

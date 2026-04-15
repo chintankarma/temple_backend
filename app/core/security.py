@@ -47,3 +47,19 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def get_current_temple(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        token = credentials.credentials
+
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("temple_sub")
+
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid temple token")
+
+        return email
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid temple token")
