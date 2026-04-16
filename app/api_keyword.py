@@ -1,4 +1,6 @@
 class AppStrings:
+    tokenType = "token_type"
+    accessToken = "access_token"
     id = "id"
     title = "title"
     name = "name"

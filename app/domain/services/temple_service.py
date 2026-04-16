@@ -1,4 +1,3 @@
-from app.response_model import BaseApiResponse
 from app.infrastructure.repositories.temple_repo import TempleRepository
 from app.core.security import hash_password, verify_password, create_access_token
 
@@ -24,24 +23,24 @@ class TempleService:
     def create_temple(db, data):
         existing = TempleRepository.get_temple_by_email(db, data.email)
         if existing:
-            return BaseApiResponse(success=False, message="Temple already registered with this email")
+            return {"success": False, "message": "Temple already registered with this email"}
 
         existing_mobile = TempleRepository.get_temple_by_mobile(db, data.mobile_number)
         if existing_mobile:
-            return BaseApiResponse(success=False, message="Temple already registered with this mobile number")
+            return {"success": False, "message": "Temple already registered with this mobile number"}
 
         hashed = hash_password(data.password)
         temple = TempleRepository.create_temple(db, data, hashed)
-        return BaseApiResponse(success=True, message="Temple registered successfully", data={"id": temple.id})
+        return {"success": True, "message": "Temple registered successfully", "data": {"id": temple.id}}
 
     @staticmethod
     def login_temple(db, data):
         temple = TempleRepository.get_temple_by_email(db, data.email)
         if not temple:
-            return BaseApiResponse(success=False, message="Temple not found")
+            return {"success": False, "message": "Temple not found"}
 
         if not verify_password(data.password, temple.password):
-            return BaseApiResponse(success=False, message="Wrong password")
+            return {"success": False, "message": "Wrong password"}
 
         token = create_access_token({"temple_sub": temple.email})
         return {
@@ -56,33 +55,33 @@ class TempleService:
     def get_temple_profile(db, email: str):
         temple = TempleRepository.get_temple_by_email(db, email)
         if not temple:
-            return BaseApiResponse(success=False, message="Temple not found")
-        return BaseApiResponse(success=True, data=_temple_dict(temple))
+            return {"success": False, "message": "Temple not found"}
+        return {"success": True, "data": _temple_dict(temple)}
 
     @staticmethod
     def get_temple(db, temple_id: int):
         temple = TempleRepository.get_temple_by_id(db, temple_id)
         if not temple:
-            return BaseApiResponse(success=False, message="Temple not found")
-        return BaseApiResponse(success=True, data=_temple_dict(temple))
+            return {"success": False, "message": "Temple not found"}
+        return {"success": True, "data": _temple_dict(temple)}
 
     @staticmethod
     def get_temples(db):
         temples = TempleRepository.get_all_temples(db)
-        return BaseApiResponse(success=True, data=[_temple_dict(t) for t in temples])
+        return {"success": True, "data": [_temple_dict(t) for t in temples]}
 
     @staticmethod
     def update_temple(db, current_email: str, data):
         temple = TempleRepository.get_temple_by_email(db, current_email)
         if not temple:
-            return BaseApiResponse(success=False, message="Temple not found")
+            return {"success": False, "message": "Temple not found"}
         updated = TempleRepository.update_temple(db, temple, data)
-        return BaseApiResponse(success=True, message="Temple updated", data=_temple_dict(updated))
+        return {"success": True, "message": "Temple updated", "data": _temple_dict(updated)}
 
     @staticmethod
     def delete_temple(db, current_email: str):
         temple = TempleRepository.get_temple_by_email(db, current_email)
         if not temple:
-            return BaseApiResponse(success=False, message="Temple not found")
+            return {"success": False, "message": "Temple not found"}
         TempleRepository.delete_temple(db, temple)
-        return BaseApiResponse(success=True, message="Temple deleted")
+        return {"success": True, "message": "Temple deleted"}

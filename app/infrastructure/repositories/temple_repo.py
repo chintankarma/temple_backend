@@ -1,4 +1,4 @@
-from app.domain.models.temple import Temple
+from app.domain.models.temple_model import Temple
 
 class TempleRepository:
 

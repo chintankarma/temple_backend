@@ -73,19 +73,19 @@ def get_me(
 
 @router.put("/update")
 def update_profile(
-    title: str = Form(...),
-    name: str = Form(...),
-    mobile_no: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    indian_citizen: bool = Form(...),
-    gender: str = Form(...),
-    date_of_birth: str = Form(...),
-    address: str = Form(...),
+    title: Optional[str] = Form(None),
+    name: Optional[str] = Form(None),
+    mobile_no: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    indian_citizen: Optional[bool] = Form(None),
+    gender: Optional[str] = Form(None),
+    date_of_birth: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
     state: Optional[str] = Form(None),
     district: Optional[str] = Form(None),
     country: Optional[str] = Form(None),
-    profile_pic: UploadFile = File(...),
+    profile_pic: Optional[UploadFile] = File(None),
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -106,6 +106,14 @@ def update_profile(
         country,
         profile_pic,
     )
+
+
+@router.delete("/profile-pic")
+def delete_profile_pic(
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return UserService.delete_profile_pic(db, current_user)
 
 
 @router.delete("/delete")
