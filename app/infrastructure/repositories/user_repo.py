@@ -43,9 +43,12 @@ class UserRepository:
         return user
 
     @staticmethod
-    def update_user(db, user: User, data):
-        for field, value in data.model_dump(exclude_unset=True).items():
-            setattr(user, field, value)
+    def update_user(db, user: User, data: dict):
+        for field, value in data.items():
+            if field == "password":
+                setattr(user, field, hash_password(value))
+            else:
+                setattr(user, field, value)
         db.commit()
         db.refresh(user)
         return user
