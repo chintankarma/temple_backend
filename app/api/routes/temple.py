@@ -62,7 +62,7 @@ def get_temple(temple_id: int, db: Session = Depends(get_db)):
 
 # ── Protected (temple token required) ───────────────────────────────────────
 
-@router.get("/auth/me")
+@router.get("/me")
 def get_temple_me(
     current_temple: str = Depends(get_current_temple),
     db: Session = Depends(get_db),
@@ -73,7 +73,7 @@ def get_temple_me(
     return result
 
 
-@router.put("/auth/update")
+@router.put("/update")
 def update_temple(
     data: TempleUpdateRequest,
     current_temple: str = Depends(get_current_temple),
@@ -85,7 +85,7 @@ def update_temple(
     return result
 
 
-@router.delete("/auth/delete")
+@router.delete("/delete")
 def delete_temple(
     current_temple: str = Depends(get_current_temple),
     db: Session = Depends(get_db),

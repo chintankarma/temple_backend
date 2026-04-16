@@ -1,12 +1,14 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import EmailStr, Field
 from typing import Optional
 from pydantic import Field
 
-class LoginRequest(BaseModel):
+from app.response_model import CleanBaseModel
+
+class LoginRequest(CleanBaseModel):
     email: str
     password: str
 
-class SignupRequest(BaseModel):
+class SignupRequest(CleanBaseModel):
     title: str
     name: str
     mobile_no: str
@@ -20,7 +22,7 @@ class SignupRequest(BaseModel):
     district: str
     profile_pic: Optional[str] = None
 
-class UpdateProfileRequest(BaseModel):
+class UpdateProfileRequest(CleanBaseModel):
     title: Optional[str] = None
     name: Optional[str] = None
     mobile_no: Optional[str] = None
