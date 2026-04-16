@@ -21,4 +21,4 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
 def home():
-    return {"message": "Clean Architecture Backend Running"}
+    return {"message": "Backend Running"}
