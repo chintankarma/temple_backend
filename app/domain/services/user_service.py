@@ -5,7 +5,7 @@ import shutil
 from app.api_keyword import AppStrings
 from app.infrastructure.repositories.user_repo import UserRepository
 from app.core.security import verify_password, create_access_token
-from utils.image_helper import save_image
+from app.utils.image_helper import save_image
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -56,7 +56,7 @@ class UserService:
                 return {"success": False, "message": "Country is required for non-Indian citizens"}
 
         profile_pic_url = None
-        if profile_pic:
+        if profile_pic and getattr(profile_pic, "filename", None):
             profile_pic_url, error = save_image(profile_pic)
 
             if error:
@@ -78,7 +78,12 @@ class UserService:
             "profile_pic": profile_pic_url,
         })
 
-        return {"success": True, "message": "User registered successfully", "data": _user_dict(user)}
+        token = {
+            AppStrings.tokenType: "bearer",
+            AppStrings.accessToken: create_access_token({"sub": user.email})
+        }
+
+        return {"success": True, "message": "User registered successfully", "token": token, "data": _user_dict(user)}
 
     @staticmethod
     def login_user(db, data):
@@ -146,27 +151,25 @@ class UserService:
                 if not country:
                     return {"success": False, "message": "Country is required for non-Indian citizens"}
 
-        # ✅ Handle profile pic update
-        profile_pic_url = user.profile_pic  # keep old by default
-    
-        if profile_pic:
-            # 🔥 Delete old image safely
+
+        if profile_pic and getattr(profile_pic, "filename", None):
+            # ✅ First save new image
+            new_url, error = save_image(profile_pic)
+
+            if error:
+                return {"success": False, "message": error}
+
+            # ✅ Only after success → delete old image
             if user.profile_pic:
                 old_filename = user.profile_pic.split("/")[-1]
                 old_path = os.path.join(UPLOAD_DIR, old_filename)
-    
+
                 if os.path.exists(old_path):
                     try:
                         os.remove(old_path)
                     except Exception:
-                        pass  # avoid breaking update
+                        pass  # don't break flow
                     
-            # 🔥 Save new image using shared helper
-            new_url, error = save_image(profile_pic)
-    
-            if error:
-                return {"success": False, "message": error}
-    
             profile_pic_url = new_url
 
         # Build update data with only provided fields
@@ -195,7 +198,7 @@ class UserService:
             update_data["district"] = district
         if country is not None:
             update_data["country"] = country
-        if profile_pic_url is not None:
+        if profile_pic is not None:
             update_data["profile_pic"] = profile_pic_url
 
         updated = UserRepository.update_user(db, user, update_data)

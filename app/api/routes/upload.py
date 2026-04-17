@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File
-from utils.image_helper import save_image
+from app.utils.image_helper import save_image
 
 router = APIRouter()
 
