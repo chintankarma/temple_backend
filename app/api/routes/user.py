@@ -76,10 +76,6 @@ def get_me(
 
 @router.put("/update")
 def update_profile(
-    # ✅ JSON body (optional)
-    body: Optional[UpdateProfileRequest] = Body(None),
-
-    # ✅ Form fields (optional)
     title: Optional[str] = Form(None),
     name: Optional[str] = Form(None),
     mobile_no: Optional[str] = Form(None),
@@ -92,21 +88,12 @@ def update_profile(
     state: Optional[str] = Form(None),
     district: Optional[str] = Form(None),
     country: Optional[str] = Form(None),
-
-    # ✅ File (optional)
     profile_pic: Optional[UploadFile] = File(None),
 
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    data = {}
-
-    # ✅ Step 1: JSON
-    if body:
-        data = body.dict(exclude_unset=True)
-
-    # ✅ Step 2: Form override
-    form_data = {
+    data = {
         "title": title,
         "name": name,
         "mobile_no": mobile_no,
@@ -121,20 +108,15 @@ def update_profile(
         "country": country,
     }
 
-    for k, v in form_data.items():
-        if v is not None:
-            data[k] = v
+    # remove null values
+    data = {k: v for k, v in data.items() if v is not None}
 
-    # ✅ Step 3: Profile Pic (file OR URL)
+    # file handling
     if profile_pic and getattr(profile_pic, "filename", None):
         profile_pic_url, error = save_image(profile_pic)
         if error:
             return {"success": False, "message": error}
         data["profile_pic"] = profile_pic_url
-
-    elif data.get("profile_pic"):
-        # already URL from JSON
-        pass
 
     return UserService.update_profile(
         db=db,

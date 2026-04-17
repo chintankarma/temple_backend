@@ -126,49 +126,43 @@ class UserService:
         user = UserRepository.get_user_by_email(db, email)
         if not user:
             return {"success": False, "message": "User not found"}
-
-        # ✅ Email uniqueness
-        if "email" in data and data["email"] != email:
-            if UserRepository.get_user_by_email(db, data["email"]):
-                return {"success": False, "message": "Email already exists"}
-
-        # ✅ Mobile uniqueness
-        if "mobile_no" in data and data["mobile_no"] != user.mobile_no:
-            if UserRepository.get_user_by_mobile(db, data["mobile_no"]):
-                return {"success": False, "message": "Mobile already exists"}
-
-        # ✅ Indian validation
-        if "indian_citizen" in data:
-            if data["indian_citizen"]:
-                if not data.get("state") or not data.get("district"):
-                    return {"success": False, "message": "State & district required"}
+    
+        # ✅ Detect final citizenship (new OR existing)
+        final_citizen = data.get("indian_citizen", user.indian_citizen)
+    
+        # ✅ Only validate if citizenship is actually changed
+        if "indian_citizen" in data and data["indian_citizen"] != user.indian_citizen:
+            if final_citizen:
+                if not data.get("state"):
+                    return {"success": False, "message": "State required"}
+                if not data.get("district"):
+                    return {"success": False, "message": "District required"}
             else:
                 if not data.get("country"):
                     return {"success": False, "message": "Country required"}
-
-        # ✅ Delete old image if new one comes
+    
+        # ✅ Profile pic delete
         if "profile_pic" in data and user.profile_pic:
             old_filename = user.profile_pic.split("/")[-1]
             old_path = os.path.join(UPLOAD_DIR, old_filename)
-
+    
             if os.path.exists(old_path):
                 try:
                     os.remove(old_path)
                 except Exception:
                     pass
-
-        # ✅ Build update data
+                
+        # ✅ Update data
         update_data = {}
-
         for key, value in data.items():
             if value is not None:
                 if key == "password":
                     update_data[key] = hash_password(value)
                 else:
                     update_data[key] = value
-
+    
         updated = UserRepository.update_user(db, user, update_data)
-
+    
         return {
             "success": True,
             "message": "Profile updated",
