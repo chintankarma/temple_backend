@@ -5,7 +5,10 @@ from typing import Optional
 from app.core.deps import get_db
 from app.core.security import get_current_user
 from app.domain.services.user_service import UserService
-from app.schemas.user_schema import LoginRequest
+from app.schemas.user_schema import LoginRequest, UpdateProfileRequest
+from fastapi import Body
+
+from app.utils.image_helper import save_image
 
 router = APIRouter()
 
@@ -73,6 +76,10 @@ def get_me(
 
 @router.put("/update")
 def update_profile(
+    # ✅ JSON body (optional)
+    body: Optional[UpdateProfileRequest] = Body(None),
+
+    # ✅ Form fields (optional)
     title: Optional[str] = Form(None),
     name: Optional[str] = Form(None),
     mobile_no: Optional[str] = Form(None),
@@ -85,26 +92,54 @@ def update_profile(
     state: Optional[str] = Form(None),
     district: Optional[str] = Form(None),
     country: Optional[str] = Form(None),
+
+    # ✅ File (optional)
     profile_pic: Optional[UploadFile] = File(None),
+
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    data = {}
+
+    # ✅ Step 1: JSON
+    if body:
+        data = body.dict(exclude_unset=True)
+
+    # ✅ Step 2: Form override
+    form_data = {
+        "title": title,
+        "name": name,
+        "mobile_no": mobile_no,
+        "email": email,
+        "password": password,
+        "indian_citizen": indian_citizen,
+        "gender": gender,
+        "date_of_birth": date_of_birth,
+        "address": address,
+        "state": state,
+        "district": district,
+        "country": country,
+    }
+
+    for k, v in form_data.items():
+        if v is not None:
+            data[k] = v
+
+    # ✅ Step 3: Profile Pic (file OR URL)
+    if profile_pic and getattr(profile_pic, "filename", None):
+        profile_pic_url, error = save_image(profile_pic)
+        if error:
+            return {"success": False, "message": error}
+        data["profile_pic"] = profile_pic_url
+
+    elif data.get("profile_pic"):
+        # already URL from JSON
+        pass
+
     return UserService.update_profile(
-        db,
-        current_user,
-        title,
-        name,
-        mobile_no,
-        email,
-        password,
-        indian_citizen,
-        gender,
-        date_of_birth,
-        address,
-        state,
-        district,
-        country,
-        profile_pic,
+        db=db,
+        email=current_user,
+        **data
     )
 
 

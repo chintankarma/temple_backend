@@ -4,7 +4,7 @@ import shutil
 
 from app.api_keyword import AppStrings
 from app.infrastructure.repositories.user_repo import UserRepository
-from app.core.security import verify_password, create_access_token
+from app.core.security import hash_password, verify_password, create_access_token
 from app.utils.image_helper import save_image
 
 UPLOAD_DIR = "uploads"
@@ -122,88 +122,59 @@ class UserService:
         return {"success": True, "message": "Profile retrieved successfully", "data": _user_dict(user)}
 
     @staticmethod
-    def update_profile(
-        db,
-        email,
-        title, name, mobile_no, email_new, password,
-        indian_citizen, gender, date_of_birth,
-        address, state, district, country,
-        profile_pic,
-    ):
+    def update_profile(db, email, **data):
         user = UserRepository.get_user_by_email(db, email)
         if not user:
             return {"success": False, "message": "User not found"}
 
-        # Check for email uniqueness only if email is being changed
-        if email_new and email_new != email and UserRepository.get_user_by_email(db, email_new):
-            return {"success": False, "message": "User already registered with this email"}
+        # ✅ Email uniqueness
+        if "email" in data and data["email"] != email:
+            if UserRepository.get_user_by_email(db, data["email"]):
+                return {"success": False, "message": "Email already exists"}
 
-        # Check for mobile uniqueness only if mobile is being changed
-        if mobile_no and mobile_no != user.mobile_no and UserRepository.get_user_by_mobile(db, mobile_no):
-            return {"success": False, "message": "User already registered with this mobile number"}
+        # ✅ Mobile uniqueness
+        if "mobile_no" in data and data["mobile_no"] != user.mobile_no:
+            if UserRepository.get_user_by_mobile(db, data["mobile_no"]):
+                return {"success": False, "message": "Mobile already exists"}
 
-        # Validation for Indian citizens
-        if indian_citizen is not None:
-            if indian_citizen:
-                if not state or not district:
-                    return {"success": False, "message": "State and district are required for Indian citizens"}
+        # ✅ Indian validation
+        if "indian_citizen" in data:
+            if data["indian_citizen"]:
+                if not data.get("state") or not data.get("district"):
+                    return {"success": False, "message": "State & district required"}
             else:
-                if not country:
-                    return {"success": False, "message": "Country is required for non-Indian citizens"}
+                if not data.get("country"):
+                    return {"success": False, "message": "Country required"}
 
+        # ✅ Delete old image if new one comes
+        if "profile_pic" in data and user.profile_pic:
+            old_filename = user.profile_pic.split("/")[-1]
+            old_path = os.path.join(UPLOAD_DIR, old_filename)
 
-        if profile_pic and getattr(profile_pic, "filename", None):
-            # ✅ First save new image
-            new_url, error = save_image(profile_pic)
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
 
-            if error:
-                return {"success": False, "message": error}
-
-            # ✅ Only after success → delete old image
-            if user.profile_pic:
-                old_filename = user.profile_pic.split("/")[-1]
-                old_path = os.path.join(UPLOAD_DIR, old_filename)
-
-                if os.path.exists(old_path):
-                    try:
-                        os.remove(old_path)
-                    except Exception:
-                        pass  # don't break flow
-                    
-            profile_pic_url = new_url
-
-        # Build update data with only provided fields
+        # ✅ Build update data
         update_data = {}
-        if title is not None:
-            update_data["title"] = title
-        if name is not None:
-            update_data["name"] = name
-        if mobile_no is not None:
-            update_data["mobile_no"] = mobile_no
-        if email_new is not None:
-            update_data["email"] = email_new
-        if password is not None:
-            update_data["password"] = password
-        if indian_citizen is not None:
-            update_data["indian_citizen"] = indian_citizen
-        if gender is not None:
-            update_data["gender"] = gender
-        if date_of_birth is not None:
-            update_data["date_of_birth"] = date_of_birth
-        if address is not None:
-            update_data["address"] = address
-        if state is not None:
-            update_data["state"] = state
-        if district is not None:
-            update_data["district"] = district
-        if country is not None:
-            update_data["country"] = country
-        if profile_pic is not None:
-            update_data["profile_pic"] = profile_pic_url
+
+        for key, value in data.items():
+            if value is not None:
+                if key == "password":
+                    update_data[key] = hash_password(value)
+                else:
+                    update_data[key] = value
 
         updated = UserRepository.update_user(db, user, update_data)
-        return {"success": True, "message": "Profile updated", "data": _user_dict(updated)}
 
+        return {
+            "success": True,
+            "message": "Profile updated",
+            "data": _user_dict(updated)
+        }
+    
     @staticmethod
     def delete_profile_pic(db, email: str):
         user = UserRepository.get_user_by_email(db, email)
