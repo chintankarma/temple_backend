@@ -74,49 +74,40 @@ def get_me(
     return result
 
 
-@router.put("/update")
-def update_profile(
-    title: Optional[str] = Form(None),
-    name: Optional[str] = Form(None),
-    mobile_no: Optional[str] = Form(None),
-    email: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
-    indian_citizen: Optional[bool] = Form(None),
-    gender: Optional[str] = Form(None),
-    date_of_birth: Optional[str] = Form(None),
-    address: Optional[str] = Form(None),
-    state: Optional[str] = Form(None),
-    district: Optional[str] = Form(None),
-    country: Optional[str] = Form(None),
-    profile_pic: Optional[UploadFile] = File(None),
+from fastapi import Request
 
+@router.put("/update")
+async def update_profile(
+    request: Request,
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    data = {
-        "title": title,
-        "name": name,
-        "mobile_no": mobile_no,
-        "email": email,
-        "password": password,
-        "indian_citizen": indian_citizen,
-        "gender": gender,
-        "date_of_birth": date_of_birth,
-        "address": address,
-        "state": state,
-        "district": district,
-        "country": country,
-    }
+    content_type = request.headers.get("content-type", "")
 
-    # remove null values
-    data = {k: v for k, v in data.items() if v is not None}
+    data = {}
 
-    # file handling
-    if profile_pic and getattr(profile_pic, "filename", None):
-        profile_pic_url, error = save_image(profile_pic)
-        if error:
-            return {"success": False, "message": error}
-        data["profile_pic"] = profile_pic_url
+    # ✅ CASE 1: JSON
+    if "application/json" in content_type:
+        body = await request.json()
+        data = {k: v for k, v in body.items() if v is not None}
+
+    # ✅ CASE 2: MULTIPART (form + file)
+    elif "multipart/form-data" in content_type:
+        form = await request.form()
+
+        for key in form.keys():
+            value = form.get(key)
+
+            # file detection
+            if hasattr(value, "filename"):
+                profile_pic_url, error = save_image(value)
+                if error:
+                    return {"success": False, "message": error}
+                data[key] = profile_pic_url
+            else:
+                data[key] = value
+
+    print("FINAL DATA:", data)
 
     return UserService.update_profile(
         db=db,
