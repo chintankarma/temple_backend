@@ -122,14 +122,27 @@ class UserService:
         return {"success": True, "message": "Profile retrieved successfully", "data": _user_dict(user)}
 
     @staticmethod
-    def update_profile(db, email, **data):
-        user = UserRepository.get_user_by_email(db, email)
+    def update_profile(db, current_email, **data):
+        user = UserRepository.get_user_by_email(db, current_email)
         if not user:
             return {"success": False, "message": "User not found"}
-    
+        
+        # ✅ Handle email update
+        new_email = data.get("email")
+
+        if new_email and new_email != current_email:
+            existing = UserRepository.get_user_by_email(db, new_email)
+            if existing:
+                return {"success": False, "message": "Email already exists"}
+
+            user.email = new_email  # update email
+
+        # ❌ Remove email from further processing
+        data.pop("email", None)
+
         # ✅ Detect final citizenship (new OR existing)
         final_citizen = data.get("indian_citizen", user.indian_citizen)
-    
+
         # ✅ Only validate if citizenship is actually changed
         if "indian_citizen" in data and data["indian_citizen"] != user.indian_citizen:
             if final_citizen:
@@ -140,18 +153,18 @@ class UserService:
             else:
                 if not data.get("country"):
                     return {"success": False, "message": "Country required"}
-    
+
         # ✅ Profile pic delete
         if "profile_pic" in data and user.profile_pic:
             old_filename = user.profile_pic.split("/")[-1]
             old_path = os.path.join(UPLOAD_DIR, old_filename)
-    
+
             if os.path.exists(old_path):
                 try:
                     os.remove(old_path)
                 except Exception:
                     pass
-                
+
         # ✅ Update data
         update_data = {}
         for key, value in data.items():
@@ -160,9 +173,9 @@ class UserService:
                     update_data[key] = hash_password(value)
                 else:
                     update_data[key] = value
-    
+
         updated = UserRepository.update_user(db, user, update_data)
-    
+
         return {
             "success": True,
             "message": "Profile updated",

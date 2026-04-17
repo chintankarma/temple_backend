@@ -11,6 +11,7 @@ from fastapi import Body
 from app.utils.image_helper import save_image
 
 from fastapi import Request
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -82,47 +83,52 @@ async def update_profile(
     current_user: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    content_type = request.headers.get("content-type", "")
-    data = {}
+    try:
+        content_type = request.headers.get("content-type", "")
+        data = {}
 
-    # ✅ CASE 1: JSON
-    if "application/json" in content_type:
-        body = await request.json()
+        # ✅ JSON request
+        if "application/json" in content_type:
+            body = await request.json()
+            for key, value in body.items():
+                if value is not None:
+                    data[key] = value
 
-        for key, value in body.items():
-            if value is None:
-                continue
+        # ✅ Multipart request (file + form)
+        elif "multipart/form-data" in content_type:
+            form = await request.form()
 
-            if key == "profile_pic":
-                # ✅ JSON → URL
-                data[key] = value
-            else:
-                data[key] = value
+            for key in form.keys():
+                value = form.get(key)
 
-    # ✅ CASE 2: MULTIPART (form + file)
-    elif "multipart/form-data" in content_type:
-        form = await request.form()
+                if hasattr(value, "filename"):
+                    profile_pic_url, error = save_image(value)
+                    if error:
+                        return {"success": False, "message": error}
+                    data[key] = profile_pic_url
+                else:
+                    data[key] = value
 
-        for key in form.keys():
-            value = form.get(key)
+        # ✅ Fix boolean
+        if "indian_citizen" in data and isinstance(data["indian_citizen"], str):
+            data["indian_citizen"] = data["indian_citizen"].lower() in ["true", "yes"]
 
-            # ✅ File upload
-            if hasattr(value, "filename"):
-                profile_pic_url, error = save_image(value)
-                if error:
-                    return {"success": False, "message": error}
-                data[key] = profile_pic_url
-            else:
-                data[key] = value
-                
-    print("FINAL DATA:", data)
+        print("FINAL DATA:", data)
 
-    return UserService.update_profile(
-        db=db,
-        email=current_user,
-        **data
-    )
+        result = UserService.update_profile(
+            db=db,
+            current_email=current_user,
+            **data
+        )
 
+        return result
+
+    except Exception as e:
+        print("🔥 ERROR:", str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": str(e)}
+        )
 
 @router.delete("/profile-pic")
 def delete_profile_pic(
