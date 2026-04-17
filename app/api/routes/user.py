@@ -10,6 +10,8 @@ from fastapi import Body
 
 from app.utils.image_helper import save_image
 
+from fastapi import Request
+
 router = APIRouter()
 
 # ── Public ───────────────────────────────────────────────────────────────────
@@ -74,8 +76,6 @@ def get_me(
     return result
 
 
-from fastapi import Request
-
 @router.put("/update")
 async def update_profile(
     request: Request,
@@ -83,13 +83,21 @@ async def update_profile(
     db: Session = Depends(get_db),
 ):
     content_type = request.headers.get("content-type", "")
-
     data = {}
 
     # ✅ CASE 1: JSON
     if "application/json" in content_type:
         body = await request.json()
-        data = {k: v for k, v in body.items() if v is not None}
+
+        for key, value in body.items():
+            if value is None:
+                continue
+
+            if key == "profile_pic":
+                # ✅ JSON → URL
+                data[key] = value
+            else:
+                data[key] = value
 
     # ✅ CASE 2: MULTIPART (form + file)
     elif "multipart/form-data" in content_type:
@@ -98,7 +106,7 @@ async def update_profile(
         for key in form.keys():
             value = form.get(key)
 
-            # file detection
+            # ✅ File upload
             if hasattr(value, "filename"):
                 profile_pic_url, error = save_image(value)
                 if error:
@@ -106,7 +114,7 @@ async def update_profile(
                 data[key] = profile_pic_url
             else:
                 data[key] = value
-
+                
     print("FINAL DATA:", data)
 
     return UserService.update_profile(
