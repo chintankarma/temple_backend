@@ -1,16 +1,14 @@
 from fastapi import APIRouter, UploadFile, File
-from app.utils.image_helper import save_image
+import cloudinary.uploader
 
 router = APIRouter()
 
-@router.post("/profile-pic")
-def upload_profile_pic(file: UploadFile = File(...)):
-    file_url, error = save_image(file)
-
-    if error:
-        return {"success": False, "message": error}
+@router.post("/upload-profile")
+async def upload_profile(file: UploadFile = File(...)):
+    
+    result = cloudinary.uploader.upload(file.file)
 
     return {
         "success": True,
-        "file_url": file_url
+        "image_url": result.get("secure_url")
     }

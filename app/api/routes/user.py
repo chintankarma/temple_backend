@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.core.deps import get_db
 from app.core.security import get_current_user
+from app.domain.models.user_model import User
 from app.domain.services.user_service import UserService
 from app.schemas.user_schema import LoginRequest, UpdateProfileRequest
 from fastapi import Body
@@ -17,6 +18,10 @@ router = APIRouter()
 
 # ── Public ───────────────────────────────────────────────────────────────────
 
+@router.get("/debug-users")
+def get_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return users
 
 @router.post("/register")
 def register_user(

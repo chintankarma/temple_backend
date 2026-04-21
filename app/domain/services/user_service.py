@@ -1,15 +1,13 @@
 import uuid
 import os
 import shutil
+from datetime import timedelta
+import cloudinary.uploader
 
 from app.api_keyword import AppStrings
 from app.infrastructure.repositories.user_repo import UserRepository
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import hash_password, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.utils.image_helper import save_image
-
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 
 def _user_dict(u):
     return {
@@ -56,11 +54,13 @@ class UserService:
                 return {"success": False, "message": "Country is required for non-Indian citizens"}
 
         profile_pic_url = None
-        if profile_pic and getattr(profile_pic, "filename", None):
-            profile_pic_url, error = save_image(profile_pic)
 
-            if error:
-                return {"success": False, "message": error}
+        if profile_pic and getattr(profile_pic, "filename", None):
+            try:
+                result = cloudinary.uploader.upload(profile_pic.file)
+                profile_pic_url = result.get("secure_url")
+            except Exception as e:
+                return {"success": False, "message": str(e)}
 
         user = UserRepository.create_user(db, {
             "title": title,
@@ -154,16 +154,12 @@ class UserService:
                 if not data.get("country"):
                     return {"success": False, "message": "Country required"}
 
-        # ✅ Profile pic delete
-        if "profile_pic" in data and user.profile_pic:
-            old_filename = user.profile_pic.split("/")[-1]
-            old_path = os.path.join(UPLOAD_DIR, old_filename)
-
-            if os.path.exists(old_path):
-                try:
-                    os.remove(old_path)
-                except Exception:
-                    pass
+        if "profile_pic" in data and data["profile_pic"]:
+            try:
+                result = cloudinary.uploader.upload(data["profile_pic"].file)
+                data["profile_pic"] = result.get("secure_url")
+            except Exception as e:
+                return {"success": False, "message": str(e)}
 
         # ✅ Update data
         update_data = {}
@@ -188,9 +184,12 @@ class UserService:
         if not user:
             return {"success": False, "message": "User not found"}
         if user.profile_pic:
-            old_path = os.path.join(UPLOAD_DIR, user.profile_pic.split('/')[-1])
-            if os.path.exists(old_path):
-                os.remove(old_path)
+            try:
+                public_id = user.profile_pic.split("/")[-1]
+                public_id = public_id.split(".")[0]
+                cloudinary.uploader.destroy(public_id)
+            except Exception:
+                pass
             UserRepository.update_user(db, user, {"profile_pic": None})
         return {"success": True, "message": "Profile picture deleted"}
 
